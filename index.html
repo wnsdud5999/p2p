@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Downloads</title>
+    <style>
+      :root { color-scheme: light dark; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f6fb; }
+      .card { width: min(760px, 92vw); background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+      h1 { margin-top: 0; }
+      p { color: #4b5563; }
+      ul { list-style: none; padding: 0; margin: 12px 0 0; }
+      li { margin: 8px 0; }
+      a { text-decoration: none; color: #2563eb; font-weight: 600; }
+      a:hover { text-decoration: underline; }
+      .muted { color: #6b7280; font-style: italic; }
+      .error { color: #b91c1c; font-weight: 600; }
+      .hint { margin-top: 16px; font-size: .95rem; }
+      code { word-break: break-all; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Download files</h1>
+      <p>
+        Files below are loaded from <code>/download/files.json</code>. Put files in
+        <code>/download</code>; the workflow updates the manifest automatically.
+      </p>
+      <ul id="file-list"><li class="muted">Loading files…</li></ul>
+      <p id="source-info" class="muted"></p>
+      <p id="hint" class="hint muted"></p>
+    </main>
+
+    <script>
+      async function loadDownloadLinks() {
+        const owner = location.hostname.split('.')[0];
+        const repo = location.pathname.split('/').filter(Boolean)[0] || owner + '.github.io';
+        const folder = 'download';
+        const list = document.getElementById('file-list');
+        const sourceInfo = document.getElementById('source-info');
+        const hint = document.getElementById('hint');
+        const pagesBasePath = repo === `${owner}.github.io` ? '/' : `/${repo}/`;
+
+        try {
+          const manifestPath = `${pagesBasePath}${folder}/files.json?t=${Date.now()}`;
+          const response = await fetch(manifestPath, { cache: 'no-store' });
+          if (!response.ok) throw new Error(`Could not load ${manifestPath}`);
+
+          const files = await response.json();
+          sourceInfo.textContent = `Loaded from: ${manifestPath}`;
+
+          if (!Array.isArray(files)) throw new Error('download/files.json must be a JSON array.');
+
+          const cleanFiles = files
+            .map((name) => String(name).trim())
+            .filter((name) => name && name.toLowerCase() !== 'readme.md' && name.toLowerCase() !== 'files.json');
+
+          if (!cleanFiles.length) {
+            list.innerHTML = '<li class="muted">No files in /download yet.</li>';
+            hint.innerHTML = 'If you already uploaded a file, GitHub Actions may still be running or disabled. Check the <strong>Actions</strong> tab and confirm <code>download/files.json</code> was updated.';
+            return;
+          }
+
+          list.innerHTML = cleanFiles
+            .sort((a, b) => a.localeCompare(b))
+            .map((fileName) => {
+              const directPath = `${pagesBasePath}${folder}/${encodeURIComponent(fileName)}`;
+              return `<li><a href="${directPath}" download>${fileName}</a></li>`;
+            })
+            .join('');
+          hint.textContent = '';
+        } catch (error) {
+          list.innerHTML = `<li class="error">Could not load file list. ${error.message}</li>`;
+          hint.innerHTML = 'If this persists, open <code>download/files.json</code> in the repository and confirm it contains your uploaded filename(s).';
+        }
+      }
+
+      loadDownloadLinks();
+    </script>
+  </body>
+</html>
