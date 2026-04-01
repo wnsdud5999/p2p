@@ -75,32 +75,49 @@
       <ul id="file-list">
         <li class="muted">Loading files…</li>
       </ul>
+      <p id="source-info" class="muted"></p>
     </main>
 
     <script>
       async function loadDownloadLinks() {
         const owner = location.hostname.split('.')[0];
         const repo = location.pathname.split('/').filter(Boolean)[0] || owner + '.github.io';
-        const branch = 'main';
+        const branchCandidates = ['main', 'master', 'gh-pages'];
         const folder = 'download';
         const list = document.getElementById('file-list');
+        const sourceInfo = document.getElementById('source-info');
         const pagesBasePath = repo === `${owner}.github.io` ? '/' : `/${repo}/`;
 
-        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${folder}?ref=${branch}`;
-
         try {
-          const response = await fetch(apiUrl, {
-            headers: {
-              Accept: 'application/vnd.github+json'
-            }
-          });
+          let selectedBranch = '';
+          let items = null;
 
-          if (!response.ok) {
-            throw new Error(`GitHub API responded with ${response.status}`);
+          for (const branch of branchCandidates) {
+            const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${folder}?ref=${branch}`;
+            const response = await fetch(apiUrl, {
+              headers: {
+                Accept: 'application/vnd.github+json'
+              }
+            });
+
+            if (response.ok) {
+              selectedBranch = branch;
+              items = await response.json();
+              break;
+            }
           }
 
-          const items = await response.json();
-          const files = items.filter((item) => item.type === 'file');
+          if (!items) {
+            throw new Error('Could not find /download on main, master, or gh-pages.');
+          }
+
+          sourceInfo.textContent = `Loaded from branch: ${selectedBranch}`;
+          const files = items.filter(
+            (item) =>
+              item.type === 'file' &&
+              (item.path || '').startsWith(`${folder}/`) &&
+              item.name.toLowerCase() !== 'readme.md'
+          );
 
           if (!files.length) {
             list.innerHTML = '<li class="muted">No files in /download yet.</li>';
