@@ -82,42 +82,23 @@
       async function loadDownloadLinks() {
         const owner = location.hostname.split('.')[0];
         const repo = location.pathname.split('/').filter(Boolean)[0] || owner + '.github.io';
-        const branchCandidates = ['main', 'master', 'gh-pages'];
         const folder = 'download';
         const list = document.getElementById('file-list');
         const sourceInfo = document.getElementById('source-info');
         const pagesBasePath = repo === `${owner}.github.io` ? '/' : `/${repo}/`;
 
         try {
-          let selectedBranch = '';
-          let items = null;
-
-          for (const branch of branchCandidates) {
-            const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${folder}?ref=${branch}`;
-            const response = await fetch(apiUrl, {
-              headers: {
-                Accept: 'application/vnd.github+json'
-              }
-            });
-
-            if (response.ok) {
-              selectedBranch = branch;
-              items = await response.json();
-              break;
-            }
+          const manifestPath = `${pagesBasePath}${folder}/files.json`;
+          const response = await fetch(manifestPath, { cache: 'no-store' });
+          if (!response.ok) {
+            throw new Error(`Manifest not found at ${manifestPath}`);
           }
+          const files = await response.json();
+          sourceInfo.textContent = `Loaded from: ${manifestPath}`;
 
-          if (!items) {
-            throw new Error('Could not find /download on main, master, or gh-pages.');
+          if (!Array.isArray(files)) {
+            throw new Error('download/files.json must be a JSON array.');
           }
-
-          sourceInfo.textContent = `Loaded from branch: ${selectedBranch}`;
-          const files = items.filter(
-            (item) =>
-              item.type === 'file' &&
-              (item.path || '').startsWith(`${folder}/`) &&
-              item.name.toLowerCase() !== 'readme.md'
-          );
 
           if (!files.length) {
             list.innerHTML = '<li class="muted">No files in /download yet.</li>';
@@ -125,11 +106,12 @@
           }
 
           list.innerHTML = files
-            .sort((a, b) => a.name.localeCompare(b.name))
+            .sort((a, b) => String(a).localeCompare(String(b)))
             .map(
-              (file) => {
-                const directPath = `${pagesBasePath}${folder}/${encodeURIComponent(file.name)}`;
-                return `<li><a href="${directPath}" download>${file.name}</a></li>`;
+              (fileName) => {
+                const safeName = String(fileName);
+                const directPath = `${pagesBasePath}${folder}/${encodeURIComponent(safeName)}`;
+                return `<li><a href="${directPath}" download>${safeName}</a></li>`;
               }
             )
             .join('');

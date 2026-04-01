@@ -1,0 +1,50 @@
+name: Update download manifest
+
+on:
+  push:
+    branches: ["main", "master", "gh-pages"]
+    paths:
+      - "download/**"
+      - ".github/workflows/update-download-manifest.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build download/files.json
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          download_dir = Path('download')
+          ignored = {'README.md', 'files.json'}
+          files = sorted(
+              p.name
+              for p in download_dir.iterdir()
+              if p.is_file() and p.name not in ignored
+          )
+          (download_dir / 'files.json').write_text(
+              json.dumps(files, ensure_ascii=False, indent=2) + '\n',
+              encoding='utf-8'
+          )
+          print('Generated files.json with', len(files), 'file(s)')
+          PY
+
+      - name: Commit manifest if changed
+        run: |
+          if git diff --quiet -- download/files.json; then
+            echo "No changes to manifest"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add download/files.json
+          git commit -m "chore: update download manifest"
+          git push
