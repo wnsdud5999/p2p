@@ -1,0 +1,1597 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DOCX generator</title>
+  <style>
+    :root {
+      --bg: #e9e9e9;
+      --panel: #ffffff;
+      --text: #111111;
+      --muted: #555555;
+      --accent: #000000;
+      --line: #bdbdbd;
+      --line-strong: #000000;
+      --success-bg: #f2f2f2;
+      --success-line: #8a8a8a;
+      --danger: #111111;
+      --danger-soft: #dcdcdc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    .app {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+      background: var(--panel);
+      border: 2px solid var(--line-strong);
+      border-radius: 0;
+      box-shadow: 10px 10px 0 #000000;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.5rem;
+      letter-spacing: 0.02em;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 8px 0;
+    }
+
+    .muted {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .toolbar {
+      padding: 14px;
+      border: 2px solid var(--line-strong);
+      border-radius: 0;
+      background: #f3f3f3;
+    }
+
+    button {
+      font: inherit;
+      padding: 6px 10px;
+      font-size: 0.92rem;
+      border: 1px solid var(--accent);
+      border-radius: 0;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease, opacity 120ms ease;
+    }
+
+    button:hover {
+      background: #2d2d2d;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .secondary {
+      background: #fff;
+      color: var(--accent);
+    }
+
+    select {
+      font: inherit;
+      min-width: 120px;
+      padding: 6px 9px;
+      font-size: 0.92rem;
+      border: 1px solid #000;
+      border-radius: 0;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input[type="text"] {
+      font: inherit;
+      min-width: 240px;
+      padding: 6px 9px;
+      font-size: 0.92rem;
+      border: 1px solid #000;
+      border-radius: 0;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .toolbar-top input[type="text"] {
+      flex: 1 1 260px;
+      max-width: 360px;
+    }
+
+    .toolbar-tools {
+      border-top: 1px solid #bdbdbd;
+      padding-top: 8px;
+    }
+
+    .danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: #000;
+    }
+
+    .danger:hover,
+    .secondary:hover {
+      background: #d0d0d0;
+      color: #000;
+    }
+
+    .editor-help {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    .editor-shell {
+      margin-top: 16px;
+      border: 2px solid var(--line-strong);
+      border-radius: 0;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .editor {
+      min-height: 420px;
+      padding: 24px;
+      outline: none;
+      line-height: 1.55;
+      font-size: 1rem;
+      word-break: break-word;
+      background: #ffffff;
+    }
+
+    .editor.is-empty::before {
+      content: attr(data-placeholder);
+      color: #9aa4ae;
+      pointer-events: none;
+    }
+
+    .editor p,
+    .editor div,
+    .editor h1,
+    .editor h2,
+    .editor ul,
+    .editor table {
+      margin: 0 0 12px;
+    }
+
+    .editor h1 {
+      font-size: 1.7rem;
+      line-height: 1.2;
+    }
+
+    .editor h2 {
+      font-size: 1.35rem;
+      line-height: 1.25;
+    }
+
+    .editor ul {
+      padding-left: 24px;
+    }
+
+    .editor [style*="text-align:center"] {
+      text-align: center;
+    }
+
+    .editor [style*="text-align:right"] {
+      text-align: right;
+    }
+
+    .editor [style*="text-align:justify"] {
+      text-align: justify;
+    }
+
+    .editor-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .editor-table td,
+    .editor-table th {
+      min-width: 100px;
+      padding: 10px;
+      border: 1px solid #000;
+      vertical-align: top;
+    }
+
+    .editor-table td:focus,
+    .editor-table th:focus {
+      outline: 2px solid #000;
+      outline-offset: -2px;
+    }
+
+    .editor-image-block {
+      position: relative;
+      margin: 18px 0;
+      padding: 10px;
+      border: 1px solid #000;
+      border-radius: 0;
+      background: #f7f7f7;
+    }
+
+    .editor-image-block img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 0;
+      margin: 0 auto;
+      border: 1px solid #000;
+    }
+
+    .editor-image-meta {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    .remove-image-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 6px 10px;
+      border-radius: 0;
+      font-size: 0.82rem;
+      background: #000;
+      border-color: #000;
+    }
+
+    .note {
+      margin-top: 16px;
+      padding: 10px 12px;
+      font-size: 0.94rem;
+      color: #111;
+      background: var(--success-bg);
+      border: 1px solid var(--success-line);
+      border-radius: 0;
+    }
+
+    code {
+      padding: 1px 4px;
+      border-radius: 0;
+      background: #e0e0e0;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 14px;
+      }
+
+      .app {
+        padding: 16px;
+      }
+
+      .editor {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>DOCX generator</h1>
+
+    <section class="toolbar">
+      <div class="row toolbar-top">
+        <input id="fileNameInput" type="text" value="generated" placeholder="File name" aria-label="DOCX file name" />
+        <button id="downloadBtn" type="button">Download DOCX</button>
+        <button id="clearBtn" class="danger" type="button">Clear</button>
+      </div>
+      <div class="row toolbar-tools">
+        <button id="boldBtn" class="secondary" type="button">Bold</button>
+        <select id="fontFamilySelect" aria-label="Font family">
+          <option value="">Font</option>
+          <option value="Arial">Arial</option>
+          <option value="Times New Roman">Times New Roman</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Malgun Gothic">Malgun Gothic</option>
+          <option value="Batang">Batang</option>
+        </select>
+        <select id="fontSizeSelect" aria-label="Font size">
+          <option value="">Size</option>
+          <option value="10">10 pt</option>
+          <option value="11">11 pt</option>
+          <option value="12">12 pt</option>
+          <option value="14">14 pt</option>
+          <option value="16">16 pt</option>
+          <option value="18">18 pt</option>
+          <option value="24">24 pt</option>
+          <option value="32">32 pt</option>
+        </select>
+        <button id="paragraphBtn" class="secondary" type="button">Paragraph</button>
+        <button id="heading1Btn" class="secondary" type="button">Heading 1</button>
+        <button id="heading2Btn" class="secondary" type="button">Heading 2</button>
+        <button id="bulletBtn" class="secondary" type="button">Bullets</button>
+        <button id="alignLeftBtn" class="secondary" type="button">Left</button>
+        <button id="alignCenterBtn" class="secondary" type="button">Center</button>
+        <button id="alignRightBtn" class="secondary" type="button">Right</button>
+        <button id="tableBtn" class="secondary" type="button">Table</button>
+      </div>
+    </section>
+
+    <section class="editor-shell">
+      <div
+        id="editor"
+        class="editor is-empty"
+        contenteditable="true"
+        spellcheck="true"
+        data-placeholder="Start typing here, then paste an image with Ctrl+V."
+      ></div>
+    </section>
+
+    <p class="note">
+      Validation note: this tool builds a <strong>true OOXML ZIP package</strong> (a real <code>.docx</code> structure with required XML parts),
+      not a renamed <code>.txt</code> or <code>.html</code> file.
+    </p>
+  </main>
+
+  <script>
+    const encoder = new TextEncoder();
+    const editor = document.getElementById("editor");
+    const fileNameInput = document.getElementById("fileNameInput");
+    const boldBtn = document.getElementById("boldBtn");
+    const fontFamilySelect = document.getElementById("fontFamilySelect");
+    const fontSizeSelect = document.getElementById("fontSizeSelect");
+    const paragraphBtn = document.getElementById("paragraphBtn");
+    const heading1Btn = document.getElementById("heading1Btn");
+    const heading2Btn = document.getElementById("heading2Btn");
+    const bulletBtn = document.getElementById("bulletBtn");
+    const alignLeftBtn = document.getElementById("alignLeftBtn");
+    const alignCenterBtn = document.getElementById("alignCenterBtn");
+    const alignRightBtn = document.getElementById("alignRightBtn");
+    const tableBtn = document.getElementById("tableBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    const MIME_TO_EXTENSION = {
+      "image/png": "png",
+      "image/jpeg": "jpg"
+    };
+
+    const EXTENSION_TO_MIME = {
+      png: "image/png",
+      jpg: "image/jpeg"
+    };
+
+    let savedRange = null;
+
+    function toBytes(data) {
+      return data instanceof Uint8Array ? data : encoder.encode(data);
+    }
+
+    const CRC_TABLE = (() => {
+      const table = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) {
+          c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        table[i] = c >>> 0;
+      }
+      return table;
+    })();
+
+    function crc32(bytes) {
+      let crc = 0xFFFFFFFF;
+      for (let i = 0; i < bytes.length; i++) {
+        crc = CRC_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+      }
+      return (crc ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    function dosDateTime(date = new Date()) {
+      const year = Math.max(1980, date.getFullYear());
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const seconds = Math.floor(date.getSeconds() / 2);
+      const dosTime = (hours << 11) | (minutes << 5) | seconds;
+      const dosDate = ((year - 1980) << 9) | (month << 5) | day;
+      return { dosTime, dosDate };
+    }
+
+    function writeUInt16LE(view, offset, value) {
+      view.setUint16(offset, value, true);
+    }
+
+    function writeUInt32LE(view, offset, value) {
+      view.setUint32(offset, value >>> 0, true);
+    }
+
+    function createZip(files) {
+      const now = dosDateTime();
+      const localParts = [];
+      const centralParts = [];
+      let offset = 0;
+
+      for (const file of files) {
+        const nameBytes = toBytes(file.name);
+        const dataBytes = toBytes(file.data);
+        const crc = crc32(dataBytes);
+
+        const localHeader = new ArrayBuffer(30);
+        const lv = new DataView(localHeader);
+        writeUInt32LE(lv, 0, 0x04034b50);
+        writeUInt16LE(lv, 4, 20);
+        writeUInt16LE(lv, 6, 0);
+        writeUInt16LE(lv, 8, 0);
+        writeUInt16LE(lv, 10, now.dosTime);
+        writeUInt16LE(lv, 12, now.dosDate);
+        writeUInt32LE(lv, 14, crc);
+        writeUInt32LE(lv, 18, dataBytes.length);
+        writeUInt32LE(lv, 22, dataBytes.length);
+        writeUInt16LE(lv, 26, nameBytes.length);
+        writeUInt16LE(lv, 28, 0);
+
+        localParts.push(new Uint8Array(localHeader), nameBytes, dataBytes);
+
+        const centralHeader = new ArrayBuffer(46);
+        const cv = new DataView(centralHeader);
+        writeUInt32LE(cv, 0, 0x02014b50);
+        writeUInt16LE(cv, 4, 20);
+        writeUInt16LE(cv, 6, 20);
+        writeUInt16LE(cv, 8, 0);
+        writeUInt16LE(cv, 10, 0);
+        writeUInt16LE(cv, 12, now.dosTime);
+        writeUInt16LE(cv, 14, now.dosDate);
+        writeUInt32LE(cv, 16, crc);
+        writeUInt32LE(cv, 20, dataBytes.length);
+        writeUInt32LE(cv, 24, dataBytes.length);
+        writeUInt16LE(cv, 28, nameBytes.length);
+        writeUInt16LE(cv, 30, 0);
+        writeUInt16LE(cv, 32, 0);
+        writeUInt16LE(cv, 34, 0);
+        writeUInt16LE(cv, 36, 0);
+        writeUInt32LE(cv, 38, 0);
+        writeUInt32LE(cv, 42, offset);
+
+        centralParts.push(new Uint8Array(centralHeader), nameBytes);
+        offset += 30 + nameBytes.length + dataBytes.length;
+      }
+
+      const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+      const centralOffset = offset;
+
+      const eocd = new ArrayBuffer(22);
+      const ev = new DataView(eocd);
+      writeUInt32LE(ev, 0, 0x06054b50);
+      writeUInt16LE(ev, 4, 0);
+      writeUInt16LE(ev, 6, 0);
+      writeUInt16LE(ev, 8, files.length);
+      writeUInt16LE(ev, 10, files.length);
+      writeUInt32LE(ev, 12, centralSize);
+      writeUInt32LE(ev, 16, centralOffset);
+      writeUInt16LE(ev, 20, 0);
+
+      return new Blob([...localParts, ...centralParts, new Uint8Array(eocd)], { type: "application/zip" });
+    }
+
+    function xmlEscape(s) {
+      return s.replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&apos;");
+    }
+
+    function buildRunPropertiesXml(formatting = {}) {
+      const parts = [];
+      const fontFamily = normalizeFontFamilyName(formatting.fontFamily);
+      const fontSizePt = normalizeFontSizePt(formatting.fontSizePt);
+
+      if (formatting.bold) {
+        parts.push("<w:b/>");
+      }
+
+      if (fontFamily) {
+        const escapedFont = xmlEscape(fontFamily);
+        parts.push(`<w:rFonts w:ascii="${escapedFont}" w:hAnsi="${escapedFont}" w:eastAsia="${escapedFont}" w:cs="${escapedFont}"/>`);
+      }
+
+      if (fontSizePt) {
+        const halfPoints = Math.max(2, Math.round(fontSizePt * 2));
+        parts.push(`<w:sz w:val="${halfPoints}"/>`);
+        parts.push(`<w:szCs w:val="${halfPoints}"/>`);
+      }
+
+      return parts.length > 0 ? `<w:rPr>${parts.join("")}</w:rPr>` : "";
+    }
+
+    function textRunXml(text, formatting = {}) {
+      const runPropertiesXml = buildRunPropertiesXml(formatting);
+
+      if (formatting.lineBreak) {
+        return `<w:r>${runPropertiesXml}<w:br/></w:r>`;
+      }
+
+      const escaped = xmlEscape(text);
+      const preserve = /^\s|\s$| {2,}/.test(text);
+      return `<w:r>${runPropertiesXml}<w:t${preserve ? ' xml:space="preserve"' : ""}>${escaped}</w:t></w:r>`;
+    }
+
+    function runsToXml(runs) {
+      if (!runs || runs.length === 0) {
+        return "";
+      }
+
+      return runs.map(run => {
+        if (run.lineBreak) {
+          return textRunXml("", { ...run, lineBreak: true });
+        }
+
+        return textRunXml(run.text || "", run);
+      }).join("");
+    }
+
+    function getAlignmentValue(element) {
+      const align = (element.style?.textAlign || element.getAttribute?.("align") || "").toLowerCase();
+      return ["center", "right", "justify"].includes(align) ? align : "left";
+    }
+
+    function applyElementFormatting(element, inheritedFormatting = {}) {
+      const formatting = {
+        bold: Boolean(inheritedFormatting.bold),
+        fontFamily: inheritedFormatting.fontFamily || "",
+        fontSizePt: inheritedFormatting.fontSizePt || null
+      };
+      const tagName = element.tagName.toUpperCase();
+      const fontWeight = element.style?.fontWeight || "";
+
+      if (tagName === "B" || tagName === "STRONG" || fontWeight === "bold" || Number(fontWeight) >= 600) {
+        formatting.bold = true;
+      }
+
+      const inlineFont = normalizeFontFamilyName(
+        element.style?.fontFamily || (tagName === "FONT" ? element.getAttribute("face") || "" : "")
+      );
+
+      if (inlineFont) {
+        formatting.fontFamily = inlineFont;
+      }
+
+      const inlineFontSize = normalizeFontSizePt(
+        element.style?.fontSize || (tagName === "FONT" ? element.getAttribute("size") || "" : "")
+      );
+
+      if (inlineFontSize) {
+        formatting.fontSizePt = inlineFontSize;
+      }
+
+      return formatting;
+    }
+
+    function appendMergedRun(targetRuns, run) {
+      if (run.lineBreak) {
+        targetRuns.push({ lineBreak: true });
+        return;
+      }
+
+      if (!run.text) {
+        return;
+      }
+
+      const previousRun = targetRuns[targetRuns.length - 1];
+      if (
+        previousRun &&
+        !previousRun.lineBreak &&
+        previousRun.bold === run.bold &&
+        (previousRun.fontFamily || "") === (run.fontFamily || "") &&
+        (previousRun.fontSizePt || null) === (run.fontSizePt || null)
+      ) {
+        previousRun.text += run.text;
+        return;
+      }
+
+      targetRuns.push({
+        text: run.text,
+        bold: Boolean(run.bold),
+        fontFamily: run.fontFamily || "",
+        fontSizePt: run.fontSizePt || null
+      });
+    }
+
+    function extractRunsFromNode(node, inheritedFormatting = {}) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return [{
+          text: node.textContent || "",
+          bold: Boolean(inheritedFormatting.bold),
+          fontFamily: inheritedFormatting.fontFamily || "",
+          fontSizePt: inheritedFormatting.fontSizePt || null
+        }];
+      }
+
+      if (node.nodeType !== Node.ELEMENT_NODE) {
+        return [];
+      }
+
+      const element = node;
+      if (element.tagName.toUpperCase() === "BR") {
+        return [{ lineBreak: true }];
+      }
+
+      const runs = [];
+      const nextFormatting = applyElementFormatting(element, inheritedFormatting);
+
+      for (const child of Array.from(element.childNodes)) {
+        for (const run of extractRunsFromNode(child, nextFormatting)) {
+          appendMergedRun(runs, run);
+        }
+      }
+
+      return runs;
+    }
+
+    function paragraphXmlFromBlock(block, extraProperties = []) {
+      const paragraphProperties = [...extraProperties];
+
+      if (block.align && block.align !== "left") {
+        paragraphProperties.push(`<w:jc w:val="${block.align}"/>`);
+      }
+
+      const paragraphPropertiesXml = paragraphProperties.length > 0
+        ? `<w:pPr>${paragraphProperties.join("")}</w:pPr>`
+        : "";
+
+      return `<w:p>${paragraphPropertiesXml}${runsToXml(block.runs || [])}</w:p>`;
+    }
+
+    function tableBlockXml(block, images) {
+      const columnCount = Math.max(1, ...block.rows.map(row => row.length));
+      const cellWidth = Math.floor(9000 / columnCount);
+      const gridXml = Array.from({ length: columnCount }, () => `<w:gridCol w:w="${cellWidth}"/>`).join("");
+      const rowsXml = block.rows.map(row => {
+        const cellsXml = row.map(cellBlocks => {
+          const contentXml = cellBlocks.length > 0
+            ? cellBlocks.map(cellBlock => blockToDocxXml(cellBlock, images)).join("")
+            : "<w:p/>";
+
+          return `<w:tc><w:tcPr><w:tcW w:w="${cellWidth}" w:type="dxa"/></w:tcPr>${contentXml}</w:tc>`;
+        }).join("");
+
+        return `<w:tr>${cellsXml}</w:tr>`;
+      }).join("");
+
+      return `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders><w:top w:val="single" w:sz="8" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="8" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="8" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="8" w:space="0" w:color="000000"/><w:insideH w:val="single" w:sz="8" w:space="0" w:color="000000"/><w:insideV w:val="single" w:sz="8" w:space="0" w:color="000000"/></w:tblBorders></w:tblPr><w:tblGrid>${gridXml}</w:tblGrid>${rowsXml}</w:tbl>`;
+    }
+
+    function blockToDocxXml(block, images) {
+      if (block.type === "heading1") {
+        return paragraphXmlFromBlock(block, ['<w:pStyle w:val="Heading1"/>']);
+      }
+
+      if (block.type === "heading2") {
+        return paragraphXmlFromBlock(block, ['<w:pStyle w:val="Heading2"/>']);
+      }
+
+      if (block.type === "bullet") {
+        return paragraphXmlFromBlock(block, [
+          '<w:pStyle w:val="ListParagraph"/>',
+          '<w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>'
+        ]);
+      }
+
+      if (block.type === "image") {
+        return imageParagraphXml(images[block.imageIndex], block.imageIndex);
+      }
+
+      if (block.type === "table") {
+        return tableBlockXml(block, images);
+      }
+
+      if (block.type === "blank") {
+        return "<w:p/>";
+      }
+
+      return paragraphXmlFromBlock(block);
+    }
+
+    function sanitizeFileName(name) {
+      return name
+        .replace(/[\\/:*?"<>|]/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/\.+$/g, "")
+        .trim();
+    }
+
+    function normalizeFileBaseName(name) {
+      const sanitized = sanitizeFileName(name);
+      return sanitized.replace(/\.docx$/i, "").trim();
+    }
+
+    function normalizeFontFamilyName(value) {
+      if (!value) {
+        return "";
+      }
+
+      return value
+        .split(",")[0]
+        .replace(/^['"]|['"]$/g, "")
+        .trim();
+    }
+
+    function normalizeFontSizePt(value) {
+      if (value === null || value === undefined || value === "") {
+        return null;
+      }
+
+      if (typeof value === "number" && Number.isFinite(value)) {
+        return value > 0 ? value : null;
+      }
+
+      const normalized = String(value).trim().toLowerCase();
+      if (!normalized) {
+        return null;
+      }
+
+      if (normalized.endsWith("pt")) {
+        const points = Number.parseFloat(normalized);
+        return Number.isFinite(points) && points > 0 ? points : null;
+      }
+
+      if (normalized.endsWith("px")) {
+        const pixels = Number.parseFloat(normalized);
+        return Number.isFinite(pixels) && pixels > 0 ? pixels * 0.75 : null;
+      }
+
+      const legacyFontSizeMap = {
+        "1": 8,
+        "2": 10,
+        "3": 12,
+        "4": 14,
+        "5": 18,
+        "6": 24,
+        "7": 36
+      };
+
+      if (legacyFontSizeMap[normalized]) {
+        return legacyFontSizeMap[normalized];
+      }
+
+      const numeric = Number.parseFloat(normalized);
+      return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+    }
+
+    function selectionIsInsideEditor(selection) {
+      return selection.rangeCount > 0 && editor.contains(selection.getRangeAt(0).commonAncestorContainer);
+    }
+
+    function saveCurrentSelection() {
+      const selection = window.getSelection();
+      if (!selection || !selection.rangeCount || !selectionIsInsideEditor(selection)) {
+        return;
+      }
+
+      savedRange = selection.getRangeAt(0).cloneRange();
+    }
+
+    function restoreSavedSelection() {
+      if (!savedRange || !editor.contains(savedRange.startContainer)) {
+        return false;
+      }
+
+      const selection = window.getSelection();
+      try {
+        selection.removeAllRanges();
+        selection.addRange(savedRange);
+        editor.focus();
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function detectImageTypeFromMime(mimeType, label) {
+      const extension = MIME_TO_EXTENSION[mimeType];
+      if (!extension) {
+        throw new Error(`Unsupported image type for "${label}". Please paste PNG or JPG images.`);
+      }
+
+      return {
+        extension,
+        contentType: EXTENSION_TO_MIME[extension]
+      };
+    }
+
+    async function getImageDimensions(file) {
+      const objectUrl = URL.createObjectURL(file);
+      try {
+        const image = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error(`Could not read image "${file.name}".`));
+          img.src = objectUrl;
+        });
+
+        return {
+          widthPx: image.naturalWidth,
+          heightPx: image.naturalHeight
+        };
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+    }
+
+    function fitImageToPage(widthPx, heightPx) {
+      const emusPerPixel = 9525;
+      const maxWidthEmu = 5943600;
+      const maxHeightEmu = 8229600;
+      let widthEmu = Math.max(1, Math.round(widthPx * emusPerPixel));
+      let heightEmu = Math.max(1, Math.round(heightPx * emusPerPixel));
+      const scale = Math.min(1, maxWidthEmu / widthEmu, maxHeightEmu / heightEmu);
+      widthEmu = Math.max(1, Math.round(widthEmu * scale));
+      heightEmu = Math.max(1, Math.round(heightEmu * scale));
+      return { widthEmu, heightEmu };
+    }
+
+    function createEmptyParagraph() {
+      const paragraph = document.createElement("p");
+      paragraph.appendChild(document.createElement("br"));
+      return paragraph;
+    }
+
+    function isEmptyTextBlock(element) {
+      if (!element || !(element instanceof HTMLElement)) {
+        return false;
+      }
+
+      const tagName = element.tagName.toUpperCase();
+      if (!["P", "DIV", "H1", "H2"].includes(tagName)) {
+        return false;
+      }
+
+      return !element.querySelector("img, figure, ul, ol") && element.textContent.trim() === "";
+    }
+
+    function isEditorEmpty() {
+      return editor.textContent.trim() === "" && !editor.querySelector("img");
+    }
+
+    function syncEditorState() {
+      editor.classList.toggle("is-empty", isEditorEmpty());
+    }
+
+    function ensureEditorHasUsableBlock() {
+      if (editor.childNodes.length === 0) {
+        editor.appendChild(createEmptyParagraph());
+      }
+      syncEditorState();
+    }
+
+    function placeCaretAtStart(element) {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      range.collapse(true);
+
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      editor.focus();
+    }
+
+    function findTopLevelBlock(node) {
+      let current = node;
+      while (current && current !== editor) {
+        if (current.parentNode === editor) {
+          return current;
+        }
+        current = current.parentNode;
+      }
+      return null;
+    }
+
+    function insertBlockAtCursor(block) {
+      const selection = window.getSelection();
+      const referenceBlock = selection && selection.rangeCount > 0
+        ? findTopLevelBlock(selection.anchorNode)
+        : null;
+      const trailingParagraph = createEmptyParagraph();
+
+      if (referenceBlock && referenceBlock.parentNode === editor) {
+        if (isEmptyTextBlock(referenceBlock)) {
+          referenceBlock.replaceWith(block, trailingParagraph);
+        } else {
+          referenceBlock.insertAdjacentElement("afterend", trailingParagraph);
+          referenceBlock.insertAdjacentElement("afterend", block);
+        }
+      } else {
+        if (isEditorEmpty()) {
+          editor.innerHTML = "";
+        }
+        editor.append(block, trailingParagraph);
+      }
+
+      placeCaretAtStart(trailingParagraph);
+      syncEditorState();
+    }
+
+    function imageParagraphXml(image, index) {
+      const imageName = xmlEscape(image.name || `Image ${index + 1}`);
+      const docPrId = index + 1;
+
+      return `<w:p>
+  <w:r>
+    <w:drawing>
+      <wp:inline distT="0" distB="0" distL="0" distR="0">
+        <wp:extent cx="${image.widthEmu}" cy="${image.heightEmu}"/>
+        <wp:effectExtent l="0" t="0" r="0" b="0"/>
+        <wp:docPr id="${docPrId}" name="${imageName}"/>
+        <wp:cNvGraphicFramePr>
+          <a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/>
+        </wp:cNvGraphicFramePr>
+        <a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+          <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+            <pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
+              <pic:nvPicPr>
+                <pic:cNvPr id="0" name="${imageName}"/>
+                <pic:cNvPicPr/>
+              </pic:nvPicPr>
+              <pic:blipFill>
+                <a:blip r:embed="${image.relationshipId}"/>
+                <a:stretch><a:fillRect/></a:stretch>
+              </pic:blipFill>
+              <pic:spPr>
+                <a:xfrm>
+                  <a:off x="0" y="0"/>
+                  <a:ext cx="${image.widthEmu}" cy="${image.heightEmu}"/>
+                </a:xfrm>
+                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+              </pic:spPr>
+            </pic:pic>
+          </a:graphicData>
+        </a:graphic>
+      </wp:inline>
+    </w:drawing>
+  </w:r>
+</w:p>`;
+    }
+
+    function dataUrlToBytes(dataUrl) {
+      const match = dataUrl.match(/^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,([\s\S]*)$/);
+      if (!match) {
+        throw new Error("A pasted image could not be embedded into the DOCX file.");
+      }
+
+      const mimeType = match[1] || "";
+      const isBase64 = Boolean(match[2]);
+      const payload = match[3];
+
+      if (isBase64) {
+        const binary = atob(payload);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return { mimeType, bytes };
+      }
+
+      return {
+        mimeType,
+        bytes: encoder.encode(decodeURIComponent(payload))
+      };
+    }
+
+    function getBlockRuns(element) {
+      return extractRunsFromNode(element).filter(run => run.lineBreak || run.text);
+    }
+
+    function createParagraphBlock(type, element, fallbackAlignment) {
+      const runs = getBlockRuns(element);
+      if (runs.length === 0) {
+        return { type: "blank" };
+      }
+
+      return {
+        type,
+        runs,
+        align: fallbackAlignment || getAlignmentValue(element)
+      };
+    }
+
+    function createTextBlockFromString(type, text, alignment = "left") {
+      if (!text || text.length === 0) {
+        return { type: "blank" };
+      }
+
+      return {
+        type,
+        runs: [{ text, bold: false, fontFamily: "", fontSizePt: null }],
+        align: alignment
+      };
+    }
+
+    function splitPlainTextIntoBlocks(blocks, type, text, alignment = "left") {
+      const lines = text.replace(/\r\n?/g, "\n").split("\n");
+      for (const line of lines) {
+        if (line.length === 0) {
+          blocks.push({ type: "blank" });
+        } else {
+          blocks.push(createTextBlockFromString(type, line, alignment));
+        }
+      }
+    }
+
+    function parseTableElement(tableElement) {
+      const rows = Array.from(tableElement.rows).map(row =>
+        Array.from(row.cells).map(cell => {
+          const cellAlignment = getAlignmentValue(cell);
+          const { blocks } = extractBlocksFromContainer(cell, { allowTables: false, allowImages: false });
+          const cellBlocks = blocks
+            .filter(block => block.type !== "image" && block.type !== "table")
+            .map(block => {
+              if (cellAlignment !== "left" && ["paragraph", "heading1", "heading2", "bullet"].includes(block.type)) {
+                return { ...block, align: cellAlignment };
+              }
+              return block;
+            });
+          return cellBlocks.length > 0 ? cellBlocks : [{ type: "blank" }];
+        })
+      );
+
+      return { type: "table", rows };
+    }
+
+    function extractBlocksFromContainer(container, options = {}) {
+      const allowTables = options.allowTables !== false;
+      const allowImages = options.allowImages !== false;
+      const imageElements = options.imageElements || [];
+      const blocks = [];
+
+      for (const node of Array.from(container.childNodes)) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          splitPlainTextIntoBlocks(blocks, "paragraph", node.textContent || "");
+          continue;
+        }
+
+        if (node.nodeType !== Node.ELEMENT_NODE) {
+          continue;
+        }
+
+        const element = node;
+        const tagName = element.tagName.toUpperCase();
+
+        if (allowImages && tagName === "FIGURE" && element.classList.contains("editor-image-block")) {
+          const img = element.querySelector("img");
+          if (img) {
+            const imageIndex = imageElements.push(img) - 1;
+            blocks.push({ type: "image", imageIndex });
+          }
+          continue;
+        }
+
+        if (allowImages && tagName === "IMG") {
+          const imageIndex = imageElements.push(element) - 1;
+          blocks.push({ type: "image", imageIndex });
+          continue;
+        }
+
+        if (allowTables && tagName === "TABLE") {
+          blocks.push(parseTableElement(element));
+          continue;
+        }
+
+        if (tagName === "H1") {
+          blocks.push(createParagraphBlock("heading1", element));
+          continue;
+        }
+
+        if (tagName === "H2") {
+          blocks.push(createParagraphBlock("heading2", element));
+          continue;
+        }
+
+        if (tagName === "UL" || tagName === "OL") {
+          const parentAlignment = getAlignmentValue(element);
+          const items = Array.from(element.children).filter(child => child.tagName.toUpperCase() === "LI");
+          if (items.length === 0) {
+            blocks.push({ type: "blank" });
+          } else {
+            items.forEach(item => {
+              blocks.push(createParagraphBlock("bullet", item, parentAlignment));
+            });
+          }
+          continue;
+        }
+
+        if (["P", "DIV"].includes(tagName)) {
+          const directImage = allowImages
+            ? Array.from(element.children).find(child => child.tagName && child.tagName.toUpperCase() === "IMG")
+            : null;
+
+          if (directImage && element.textContent.trim() === "") {
+            const imageIndex = imageElements.push(directImage) - 1;
+            blocks.push({ type: "image", imageIndex });
+          } else {
+            blocks.push(createParagraphBlock("paragraph", element));
+          }
+          continue;
+        }
+
+        if (tagName === "BR") {
+          blocks.push({ type: "blank" });
+          continue;
+        }
+
+        blocks.push(createParagraphBlock("paragraph", element));
+      }
+
+      return { blocks, imageElements };
+    }
+
+    function extractEditorBlocks() {
+      const imageElements = [];
+      const { blocks } = extractBlocksFromContainer(editor, { imageElements });
+
+      if (blocks.length === 0) {
+        blocks.push({ type: "blank" });
+      }
+
+      return { blocks, imageElements };
+    }
+
+    async function ensureEditorImagesReady() {
+      const images = Array.from(editor.querySelectorAll("img"));
+      await Promise.all(images.map(img => {
+        if (img.complete) {
+          return Promise.resolve();
+        }
+
+        return new Promise((resolve, reject) => {
+          img.addEventListener("load", resolve, { once: true });
+          img.addEventListener("error", () => reject(new Error(`Image "${img.alt || "pasted image"}" failed to load.`)), { once: true });
+        });
+      }));
+    }
+
+    async function readImageElementForDocx(img, index) {
+      const src = img.getAttribute("src") || "";
+      if (!src.startsWith("data:")) {
+        throw new Error(`Image "${img.alt || `Image ${index + 1}`}" is not embedded. Paste the image directly into the editor first.`);
+      }
+
+      const { mimeType, bytes } = dataUrlToBytes(src);
+      const label = img.dataset.name || img.alt || `Image ${index + 1}`;
+      const typeInfo = detectImageTypeFromMime(mimeType, label);
+      const widthPx = Number(img.dataset.widthPx) || img.naturalWidth || img.width || 1;
+      const heightPx = Number(img.dataset.heightPx) || img.naturalHeight || img.height || 1;
+      const size = fitImageToPage(widthPx, heightPx);
+
+      return {
+        name: label,
+        extension: typeInfo.extension,
+        contentType: typeInfo.contentType,
+        widthPx,
+        heightPx,
+        widthEmu: size.widthEmu,
+        heightEmu: size.heightEmu,
+        bytes,
+        relationshipId: `rId${index + 3}`,
+        mediaPath: `media/image${index + 1}.${typeInfo.extension}`
+      };
+    }
+
+    function buildDocx(blocks, images, documentTitle) {
+      const bodyXml = blocks.map(block => blockToDocxXml(block, images)).join("\n  ");
+
+      const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+ xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+ xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+ xmlns:v="urn:schemas-microsoft-com:vml"
+ xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing"
+ xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+ xmlns:w10="urn:schemas-microsoft-com:office:word"
+ xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+ xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+ xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+ xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"
+ xmlns:wne="http://schemas.microsoft.com/office/2006/wordml"
+ xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+ xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+ xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+ mc:Ignorable="w14 wp14">
+ <w:body>
+  ${bodyXml}
+  <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr>
+ </w:body>
+</w:document>`;
+
+      const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+ <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>
+ <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="32"/></w:rPr></w:style>
+ <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:style>
+ <w:style w:type="paragraph" w:styleId="ListParagraph"><w:name w:val="List Paragraph"/><w:basedOn w:val="Normal"/></w:style>
+</w:styles>`;
+
+      const numberingXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+ <w:abstractNum w:abstractNumId="0">
+  <w:multiLevelType w:val="hybridMultilevel"/>
+  <w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="&#8226;"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="720" w:hanging="360"/></w:pPr></w:lvl>
+ </w:abstractNum>
+ <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num>
+</w:numbering>`;
+
+      const imageDefaults = [...new Set(images.map(image => image.extension))]
+        .map(extension => ` <Default Extension="${extension}" ContentType="${EXTENSION_TO_MIME[extension]}"/>`)
+        .join("\n");
+
+      const imageRelationships = images
+        .map(image => ` <Relationship Id="${image.relationshipId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${image.mediaPath}"/>`)
+        .join("\n");
+
+      const safeDocumentTitle = xmlEscape(documentTitle || "Generated Document");
+
+      const files = [
+        {
+          name: "[Content_Types].xml",
+          data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+ <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+ <Default Extension="xml" ContentType="application/xml"/>${imageDefaults ? `\n${imageDefaults}` : ""}
+ <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+ <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+ <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
+ <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+ <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>`
+        },
+        {
+          name: "_rels/.rels",
+          data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+ <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+ <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>`
+        },
+        {
+          name: "docProps/core.xml",
+          data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${safeDocumentTitle}</dc:title></cp:coreProperties>`
+        },
+        {
+          name: "docProps/app.xml",
+          data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>Browser OOXML Generator</Application></Properties>`
+        },
+        {
+          name: "word/_rels/document.xml.rels",
+          data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+ <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+ <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>${imageRelationships ? `\n${imageRelationships}` : ""}
+</Relationships>`
+        },
+        { name: "word/document.xml", data: documentXml },
+        { name: "word/styles.xml", data: stylesXml },
+        { name: "word/numbering.xml", data: numberingXml },
+        ...images.map(image => ({
+          name: `word/${image.mediaPath}`,
+          data: image.bytes
+        }))
+      ];
+
+      return createZip(files);
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error(`Could not read image "${file.name}".`));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function createImageBlock(source) {
+      const figure = document.createElement("figure");
+      figure.className = "editor-image-block";
+      figure.contentEditable = "false";
+
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "remove-image-btn";
+      removeButton.textContent = "Remove";
+
+      const img = document.createElement("img");
+      img.src = source.src;
+      img.alt = source.name;
+      img.dataset.name = source.name;
+      img.dataset.mimeType = source.mimeType;
+      img.dataset.widthPx = String(source.widthPx);
+      img.dataset.heightPx = String(source.heightPx);
+
+      const meta = document.createElement("div");
+      meta.className = "editor-image-meta";
+      meta.textContent = `${source.name} - ${source.widthPx} x ${source.heightPx}`;
+
+      figure.append(removeButton, img, meta);
+      return figure;
+    }
+
+    async function pasteImageFile(file, index) {
+      detectImageTypeFromMime(file.type, file.name || `Pasted image ${index + 1}`);
+      const [dataUrl, dimensions] = await Promise.all([
+        fileToDataUrl(file),
+        getImageDimensions(file)
+      ]);
+
+      const block = createImageBlock({
+        src: dataUrl,
+        name: file.name || `Pasted image ${index + 1}`,
+        mimeType: file.type,
+        widthPx: dimensions.widthPx,
+        heightPx: dimensions.heightPx
+      });
+
+      insertBlockAtCursor(block);
+    }
+
+    function executeEditorCommand(command, value = null) {
+      ensureEditorHasUsableBlock();
+      restoreSavedSelection();
+      editor.focus();
+      document.execCommand(command, false, value);
+      saveCurrentSelection();
+      syncEditorState();
+    }
+
+    function applyBlockFormat(tagName) {
+      ensureEditorHasUsableBlock();
+      restoreSavedSelection();
+      editor.focus();
+      const applied = document.execCommand("formatBlock", false, tagName);
+      if (!applied) {
+        document.execCommand("formatBlock", false, `<${tagName}>`);
+      }
+      saveCurrentSelection();
+      syncEditorState();
+    }
+
+    function applyAlignment(alignment) {
+      const command = alignment === "center"
+        ? "justifyCenter"
+        : alignment === "right"
+          ? "justifyRight"
+          : "justifyLeft";
+
+      executeEditorCommand(command);
+    }
+
+    function applyFontSize(sizePt) {
+      ensureEditorHasUsableBlock();
+      restoreSavedSelection();
+      editor.focus();
+      document.execCommand("fontSize", false, "7");
+
+      editor.querySelectorAll('font[size="7"]').forEach(element => {
+        element.style.fontSize = `${sizePt}pt`;
+        element.removeAttribute("size");
+      });
+
+      saveCurrentSelection();
+      syncEditorState();
+    }
+
+    function promptTableSize(label, defaultValue) {
+      const rawValue = window.prompt(label, String(defaultValue));
+      if (rawValue === null) {
+        return null;
+      }
+
+      const parsedValue = Number.parseInt(rawValue, 10);
+      if (!Number.isInteger(parsedValue) || parsedValue < 1 || parsedValue > 10) {
+        window.alert("Please enter a whole number from 1 to 10.");
+        return null;
+      }
+
+      return parsedValue;
+    }
+
+    function createTableBlock(rows, cols) {
+      const table = document.createElement("table");
+      table.className = "editor-table";
+
+      const tbody = document.createElement("tbody");
+      for (let rowIndex = 0; rowIndex < rows; rowIndex++) {
+        const row = document.createElement("tr");
+        for (let colIndex = 0; colIndex < cols; colIndex++) {
+          const cell = document.createElement("td");
+          cell.appendChild(document.createElement("br"));
+          row.appendChild(cell);
+        }
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      return table;
+    }
+
+    function insertTable() {
+      const rows = promptTableSize("Table rows (1-10)?", 2);
+      if (rows === null) {
+        return;
+      }
+
+      const cols = promptTableSize("Table columns (1-10)?", 2);
+      if (cols === null) {
+        return;
+      }
+
+      restoreSavedSelection();
+      insertBlockAtCursor(createTableBlock(rows, cols));
+      saveCurrentSelection();
+    }
+
+    function clearEditor() {
+      if (!isEditorEmpty() && !window.confirm("Clear the current document?")) {
+        return;
+      }
+
+      editor.innerHTML = "";
+      const paragraph = createEmptyParagraph();
+      editor.appendChild(paragraph);
+      placeCaretAtStart(paragraph);
+      fontFamilySelect.value = "";
+      fontSizeSelect.value = "";
+      syncEditorState();
+    }
+
+    document.addEventListener("selectionchange", saveCurrentSelection);
+
+    boldBtn.addEventListener("click", () => executeEditorCommand("bold"));
+    fontFamilySelect.addEventListener("change", () => {
+      if (!fontFamilySelect.value) {
+        return;
+      }
+
+      executeEditorCommand("fontName", fontFamilySelect.value);
+      fontFamilySelect.value = "";
+    });
+    fontSizeSelect.addEventListener("change", () => {
+      if (!fontSizeSelect.value) {
+        return;
+      }
+
+      applyFontSize(fontSizeSelect.value);
+      fontSizeSelect.value = "";
+    });
+    paragraphBtn.addEventListener("click", () => applyBlockFormat("p"));
+    heading1Btn.addEventListener("click", () => applyBlockFormat("h1"));
+    heading2Btn.addEventListener("click", () => applyBlockFormat("h2"));
+    bulletBtn.addEventListener("click", () => executeEditorCommand("insertUnorderedList"));
+    alignLeftBtn.addEventListener("click", () => applyAlignment("left"));
+    alignCenterBtn.addEventListener("click", () => applyAlignment("center"));
+    alignRightBtn.addEventListener("click", () => applyAlignment("right"));
+    tableBtn.addEventListener("click", insertTable);
+    clearBtn.addEventListener("click", clearEditor);
+
+    editor.addEventListener("input", () => {
+      syncEditorState();
+      saveCurrentSelection();
+    });
+    editor.addEventListener("focus", () => {
+      ensureEditorHasUsableBlock();
+      saveCurrentSelection();
+    });
+    editor.addEventListener("mouseup", saveCurrentSelection);
+    editor.addEventListener("keyup", saveCurrentSelection);
+
+    editor.addEventListener("click", event => {
+      const removeButton = event.target.closest(".remove-image-btn");
+      if (!removeButton) {
+        return;
+      }
+
+      const block = removeButton.closest(".editor-image-block");
+      const nextBlock = block.nextElementSibling;
+      block.remove();
+
+      if (nextBlock && isEmptyTextBlock(nextBlock)) {
+        placeCaretAtStart(nextBlock);
+      } else {
+        ensureEditorHasUsableBlock();
+      }
+
+      syncEditorState();
+    });
+
+    editor.addEventListener("paste", async event => {
+      const clipboardItems = Array.from(event.clipboardData?.items || []);
+      const imageFiles = clipboardItems
+        .filter(item => item.kind === "file" && item.type.startsWith("image/"))
+        .map(item => item.getAsFile())
+        .filter(Boolean);
+
+      if (imageFiles.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+
+      try {
+        for (let i = 0; i < imageFiles.length; i++) {
+          await pasteImageFile(imageFiles[i], i);
+        }
+      } catch (error) {
+        console.error(error);
+        alert(error instanceof Error ? error.message : "Could not paste image.");
+      }
+    });
+
+    downloadBtn.addEventListener("click", async () => {
+      downloadBtn.disabled = true;
+
+      try {
+        const requestedName = fileNameInput.value.trim();
+        const safeBaseName = normalizeFileBaseName(requestedName) || "generated";
+        await ensureEditorImagesReady();
+        const { blocks, imageElements } = extractEditorBlocks();
+        const images = await Promise.all(imageElements.map((img, index) => readImageElementForDocx(img, index)));
+        const blob = buildDocx(blocks, images, requestedName || safeBaseName);
+        triggerDownload(blob, `${safeBaseName}.docx`);
+      } catch (error) {
+        console.error(error);
+        alert(error instanceof Error ? error.message : "Export failed.");
+      } finally {
+        downloadBtn.disabled = false;
+      }
+    });
+
+    ensureEditorHasUsableBlock();
+
+    /*
+    Quick notes
+    ===========
+
+    Typing:
+    - Click inside the editor and type normally
+
+    Pasting:
+    - Press Ctrl+V to paste a screenshot or photo from clipboard
+    - Pasted images become part of the editor and the DOCX export
+
+    Formatting:
+    - Use Bold, Font, Paragraph, Heading, Alignment, Bullets, and Table for simple structure
+    */
+  </script>
+</body>
+</html>
