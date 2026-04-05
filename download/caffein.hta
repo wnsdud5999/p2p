@@ -1,0 +1,440 @@
+<html>
+<head>
+  <title>Caffeine</title>
+  <hta:application
+    id="keepAwakeApp"
+    applicationname="CodexKeepAwake"
+    border="thin"
+    borderstyle="normal"
+    caption="yes"
+    contextmenu="no"
+    innerborder="no"
+    maximizebutton="no"
+    minimizebutton="yes"
+    navigable="no"
+    scroll="no"
+    showintaskbar="yes"
+    singleinstance="yes"
+    sysmenu="yes"
+    windowstate="normal"
+  />
+  <meta http-equiv="x-ua-compatible" content="IE=9" />
+  <style>
+    :root {
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --text: #000000;
+      --muted: #000000;
+      --line: #7a7a7a;
+      --status-bg: #d9d9d9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Segoe UI, Tahoma, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 2px solid #000000;
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      letter-spacing: -0.03em;
+      font-weight: 800;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .status {
+      margin: 14px 0;
+      padding: 14px;
+      border: 2px solid var(--line);
+      background: var(--status-bg);
+    }
+
+    .status strong {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+
+    .ok {
+      color: #000000;
+    }
+
+    .warn {
+      color: #000000;
+    }
+
+    .controls {
+      margin-top: 14px;
+    }
+
+    .field {
+      margin-top: 14px;
+    }
+
+    .duration-row {
+      margin-top: 6px;
+      white-space: nowrap;
+    }
+
+    .duration-row select {
+      width: 74px;
+      margin-right: 6px;
+    }
+
+    .duration-row span {
+      margin-right: 10px;
+      font-weight: 700;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    select {
+      width: 220px;
+      padding: 10px 12px;
+      border: 2px solid #000000;
+      background: #ffffff;
+      color: #000000;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    .hint {
+      margin-top: 6px;
+      color: #000000;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    button {
+      margin-right: 10px;
+      margin-bottom: 10px;
+      padding: 10px 16px;
+      border: 2px solid #000000;
+      background: #ffffff;
+      color: #000000;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .secondary {
+      background: #d9d9d9;
+      color: #000000;
+    }
+
+    ul {
+      margin: 14px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-weight: 700;
+    }
+
+    code {
+      color: #000000;
+      font-family: Consolas, "Courier New", monospace;
+      font-weight: 700;
+    }
+  </style>
+  <script language="javascript">
+    var shell = null;
+    var timerId = null;
+    var checkTimerId = null;
+    var running = false;
+    var intervalMs = 180000;
+    var stopAt = null;
+    var stopAfterText = "";
+    var endAction = "none";
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function nowText() {
+      var d = new Date();
+      return d.toLocaleTimeString();
+    }
+
+    function setStatus(message, cssClass) {
+      $("statusText").innerText = message;
+      $("statusText").className = cssClass || "";
+      $("lastTick").innerText = nowText();
+    }
+
+    function pad(value) {
+      return value < 10 ? "0" + value : "" + value;
+    }
+
+    function formatStopAt(dateValue) {
+      return dateValue.getFullYear() + "-" +
+        pad(dateValue.getMonth() + 1) + "-" +
+        pad(dateValue.getDate()) + " " +
+        pad(dateValue.getHours()) + ":" +
+        pad(dateValue.getMinutes());
+    }
+
+    function actionLabel(actionValue) {
+      if (actionValue === "lock") {
+        return "Lock computer";
+      }
+      if (actionValue === "shutdown") {
+        return "Turn off computer";
+      }
+      return "Do nothing";
+    }
+
+    function buildNumberOptions(select, startValue, endValue) {
+      var option;
+      var value;
+
+      for (value = startValue; value <= endValue; value += 1) {
+        option = document.createElement("option");
+        option.value = String(value);
+        option.text = String(value);
+        select.options.add(option);
+      }
+    }
+
+    function buildDurationOptions() {
+      buildNumberOptions($("daysInput"), 0, 30);
+      buildNumberOptions($("hoursInput"), 0, 23);
+      buildNumberOptions($("minutesInput"), 0, 59);
+    }
+
+    function formatDuration(days, hours, minutes) {
+      var parts = [];
+      if (days > 0) {
+        parts.push(days + " day" + (days === 1 ? "" : "s"));
+      }
+      if (hours > 0) {
+        parts.push(hours + " hour" + (hours === 1 ? "" : "s"));
+      }
+      if (minutes > 0) {
+        parts.push(minutes + " minute" + (minutes === 1 ? "" : "s"));
+      }
+      if (parts.length === 0) {
+        return "No end time";
+      }
+      return parts.join(", ");
+    }
+
+    function parseStopAt() {
+      var days;
+      var hours;
+      var minutes;
+      var now;
+      var target;
+      var totalMinutes;
+
+      days = parseInt($("daysInput").value, 10);
+      hours = parseInt($("hoursInput").value, 10);
+      minutes = parseInt($("minutesInput").value, 10);
+      totalMinutes = (days * 24 * 60) + (hours * 60) + minutes;
+
+      if (totalMinutes <= 0) {
+        return { value: null };
+      }
+
+      now = new Date();
+      target = new Date(now.getTime() + (totalMinutes * 60000));
+
+      return {
+        value: target,
+        durationText: formatDuration(days, hours, minutes)
+      };
+    }
+
+    function performEndAction() {
+      if (endAction === "none") {
+        return;
+      }
+
+      if (!shell) {
+        shell = new ActiveXObject("WScript.Shell");
+      }
+
+      if (endAction === "lock") {
+        shell.Run("rundll32.exe user32.dll,LockWorkStation", 0, false);
+        return;
+      }
+
+      if (endAction === "shutdown") {
+        shell.Run("shutdown.exe /s /t 0", 0, false);
+      }
+    }
+
+    function runningMessage() {
+      var message = "Running. F15 is sent every 3 minutes.";
+      if (stopAt) {
+        message += " Stops after " + stopAfterText + " (" + formatStopAt(stopAt) + ").";
+        if (endAction !== "none") {
+          message += " Then: " + actionLabel(endAction) + ".";
+        }
+      }
+      message += " You can minimize this window.";
+      return message;
+    }
+
+    function updateButtons() {
+      $("startBtn").disabled = running;
+      $("stopBtn").disabled = !running;
+      $("daysInput").disabled = running;
+      $("hoursInput").disabled = running;
+      $("minutesInput").disabled = running;
+      $("endActionInput").disabled = running;
+    }
+
+    function checkStopTime() {
+      if (!running || !stopAt) {
+        return;
+      }
+
+      if ((new Date()).getTime() >= stopAt.getTime()) {
+        stopWake("Stopped at the selected time.", "warn");
+        performEndAction();
+      }
+    }
+
+    function sendWakeSignal() {
+      try {
+        if (!shell) {
+          shell = new ActiveXObject("WScript.Shell");
+        }
+        shell.SendKeys("{F15}");
+        setStatus(runningMessage(), "ok");
+      } catch (e) {
+        setStatus("Could not send the keep-awake signal: " + e.message, "warn");
+        stopWake();
+      }
+    }
+
+    function startWake() {
+      var parsedStopAt;
+
+      if (running) {
+        return;
+      }
+
+      parsedStopAt = parseStopAt();
+      if (parsedStopAt.error) {
+        setStatus(parsedStopAt.error, "warn");
+        return;
+      }
+
+      stopAt = parsedStopAt.value;
+      stopAfterText = parsedStopAt.durationText || "";
+      endAction = $("endActionInput").value;
+      running = true;
+      sendWakeSignal();
+      timerId = window.setInterval(sendWakeSignal, intervalMs);
+      checkTimerId = window.setInterval(checkStopTime, 15000);
+      updateButtons();
+    }
+
+    function stopWake(message, cssClass) {
+      running = false;
+      stopAt = null;
+      stopAfterText = "";
+      endAction = "none";
+      if (timerId !== null) {
+        window.clearInterval(timerId);
+        timerId = null;
+      }
+      if (checkTimerId !== null) {
+        window.clearInterval(checkTimerId);
+        checkTimerId = null;
+      }
+      updateButtons();
+      setStatus(message || "Stopped. Close the window to exit.", cssClass || "warn");
+    }
+
+    function init() {
+      var width;
+      var height;
+      var left;
+      var top;
+
+      buildDurationOptions();
+      updateButtons();
+      setStatus("Ready.", "warn");
+
+      try {
+        width = 520;
+        height = 660;
+        left = Math.max(0, Math.round((screen.availWidth - width) / 2));
+        top = Math.max(0, Math.round((screen.availHeight - height) / 2));
+        window.resizeTo(width, height);
+        window.moveTo(left, top);
+      } catch (e) {
+      }
+    }
+
+    window.onload = init;
+    window.onbeforeunload = function() { stopWake(); };
+  </script>
+</head>
+<body>
+  <div class="card">
+    <h1>Caffeine</h1>
+    <p>
+      Sends F15 every 3 minutes to help keep the computer awake.
+    </p>
+
+    <div class="status">
+      <strong>Status</strong>
+      <div id="statusText" class="warn">Loading...</div>
+      <div style="margin-top:8px;color:#000000;font-weight:700;">Last update: <code id="lastTick">--:--:--</code></div>
+    </div>
+
+    <div class="field">
+      <label>Keep For</label>
+      <div class="duration-row">
+        <select id="daysInput"></select><span>days</span>
+        <select id="hoursInput"></select><span>hours</span>
+        <select id="minutesInput"></select><span>minutes</span>
+      </div>
+      <div class="hint">Days, hours, minutes. Leave all at 0 for No end time.</div>
+    </div>
+
+    <div class="field">
+      <label for="endActionInput">After That</label>
+      <select id="endActionInput">
+        <option value="none">Do nothing</option>
+        <option value="lock">Lock computer</option>
+        <option value="shutdown">Turn off computer</option>
+      </select>
+      <div class="hint">This only happens when Keep Until reaches the selected time.</div>
+    </div>
+
+    <div class="controls">
+      <button id="startBtn" onclick="startWake()">Start</button>
+      <button id="stopBtn" class="secondary" onclick="stopWake()">Stop</button>
+    </div>
+
+  </div>
+</body>
+</html>
